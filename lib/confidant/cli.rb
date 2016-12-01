@@ -1,5 +1,6 @@
 require 'gli'
 require 'confidant/configurator'
+require 'confidant/client'
 
 module Confidant
   class CLI
@@ -67,6 +68,7 @@ module Confidant
 
       c.action do |global_options,options,_|
         log.debug "Running get_service command"
+        Confidant::Client.new(Confidant::Configurator.config).get_service
 
       end
     end

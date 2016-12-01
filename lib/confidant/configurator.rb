@@ -6,19 +6,22 @@ module Confidant
 
     attr_accessor :config
 
+    # Default configraion options for this tool itself, rather than Confidant.
+    # We pass these through to the CLI.
     DEFAULT_OPTS = {
       config_files: %w( ~/.confidant /etc/confidant/config ),
       profile: 'default',
       log_level: 'info'
     }
 
+    # Default configuration options for Confidant/KMS.
     DEFAULTS = {
       token_version: 2,
       user_type: 'service',
       region: 'us-east-1'
     }
 
-    MANDATORY_OPTS = {
+    MANDATORY_CONFIG_KEYS = {
       global: [:url, :auth_key, :from, :to],
       get_service: [ :service ]
     }
@@ -28,13 +31,13 @@ module Confidant
     end
 
     def self::valid_config?(command)
-      missing_global_keys = MANDATORY_OPTS[:global] - @config.keys
+      missing_global_keys = MANDATORY_CONFIG_KEYS[:global] - @config.keys
       unless missing_global_keys.empty?
         log.error "Required config options not provided: #{missing_global_keys.join(', ')}"
         return false
       end
 
-      missing_command_keys = MANDATORY_OPTS[command] - @config[command].keys
+      missing_command_keys = MANDATORY_CONFIG_KEYS[command] - @config[command].keys
       unless missing_command_keys.empty?
         log.error "Required config options for command '#{command}' not provided: #{missing_command_keys.join(', ')}"
         return false
@@ -63,6 +66,9 @@ module Confidant
       config.delete(:config_files)
       config.delete(:profile)
       config.delete(:log_level)
+
+      # Merge config onto local DEFAULTS
+      config = DEFAULTS.dup.merge(config)
 
       log.debug "authoritative config: #{config}"
       @config = config
