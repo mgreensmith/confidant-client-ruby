@@ -2,8 +2,8 @@ require 'yaml'
 require 'active_support/hash_with_indifferent_access'
 
 module Confidant
+  # Builds configuration for the Confidant client
   class Configurator
-
     attr_accessor :config
 
     # Default configraion options for this tool itself, rather than Confidant.
@@ -12,19 +12,19 @@ module Confidant
       config_files: %w( ~/.confidant /etc/confidant/config ),
       profile: 'default',
       log_level: 'info'
-    }
+    }.freeze
 
     # Default configuration options for Confidant/KMS.
     DEFAULTS = {
       token_version: 2,
       user_type: 'service',
       region: 'us-east-1'
-    }
+    }.freeze
 
     MANDATORY_CONFIG_KEYS = {
       global: [:url, :auth_key, :from, :to],
-      get_service: [ :service ]
-    }
+      get_service: [:service]
+    }.freeze
 
     def self::config
       @config || {}
@@ -43,24 +43,22 @@ module Confidant
         return false
       end
 
-      return true
+      true
     end
 
     def self::configure(cli_opts, command)
       config = cli_opts
       cli_opts[:config_files].each do |config_file|
-
         log.debug "looking for config file: #{config_file}"
 
-        if File.exist?(File.expand_path(config_file))
-          log.debug "found config file: #{config_file}"
+        next unless File.exist?(File.expand_path(config_file))
+        log.debug "found config file: #{config_file}"
 
-          profile_config = config_from_file(File.expand_path(config_file), cli_opts[:profile])
+        profile_config = config_from_file(File.expand_path(config_file), cli_opts[:profile])
 
-          # Merge the CLI options config over the file profile config
-          config = profile_config.merge(config)
-          break
-        end
+        # Merge the CLI options config over the file profile config
+        config = profile_config.merge(config)
+        break
       end
 
       config.delete(:config_files)
@@ -73,7 +71,7 @@ module Confidant
       log.debug "authoritative config: #{config}"
       @config = config
 
-      return valid_config?(command)
+      valid_config?(command)
     end
 
     def self::config_from_file(config_file, profile)
@@ -84,11 +82,10 @@ module Confidant
 
       # Merge the :auth_context keys into the top-level hash
       profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
-      profile_config.delete_if { |k,_| k == :auth_context }
+      profile_config.delete_if { |k, _| k == :auth_context }
       log.debug "file config for profile '#{profile}': #{profile_config}"
 
-      return profile_config
+      profile_config
     end
-
   end
 end

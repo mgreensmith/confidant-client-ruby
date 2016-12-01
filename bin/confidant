@@ -3,4 +3,4 @@
 require 'confidant'
 require 'confidant/cli'
 
-exit Confidant::CLI.run( ARGV )
+exit Confidant::CLI.run(ARGV)
