@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
-require "confidant/cli"
+require 'confidant'
+require 'confidant/cli'
 
 exit Confidant::CLI.run( ARGV )

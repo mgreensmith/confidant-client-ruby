@@ -1,5 +1,9 @@
-require "confidant/version"
+require 'logging'
+require 'confidant/version'
+
+include Logging.globally( :log )
 
 module Confidant
-  # Your code goes here...
+  Logging.logger.root.appenders = Logging.appenders.stdout
+  Logging.logger.root.level = :info
 end

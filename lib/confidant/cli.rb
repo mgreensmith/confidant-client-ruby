@@ -1,5 +1,4 @@
 require 'gli'
-
 require 'confidant/configurator'
 
 module Confidant
@@ -12,49 +11,50 @@ module Confidant
 
     ### Global configuration options
 
-    DEFAULTS = Confidant::Configurator::DEFAULTS
+    # 'switch' options are booleans
+    desc 'Prompt for an MFA token.'
+    switch 'mfa'
+
+    # 'flag' options take params
 
     desc 'Comma separated list of configuration files to use'
-    flag :config_files, default_value: DEFAULTS[:config_files].join(',')
+    flag 'config-files', default_value: Confidant::Configurator::DEFAULT_OPTS[:config_files].join(',')
 
     desc 'Configuration profile to use.'
-    flag :profile, default_value: DEFAULTS[:profile]
-
-    desc 'URL of the confidant server.'
-    flag [:u, :url], default_value: DEFAULTS[:url]
-
-    desc 'Number of retries that should be attempted on confidant server errors.'
-    flag :retries, default_value: DEFAULTS[:retries]
-
-    desc 'The KMS auth key to use. i.e. alias/authnz-production'
-    flag [:k, :auth_key], default_value: DEFAULTS[:auth_key]
-
-    desc 'The token lifetime, in minutes.'
-    flag [:l, :token_lifetime], default_value: DEFAULTS[:token_lifetime]
-
-    desc 'The version of the KMS auth token.'
-    flag :token_version, default_value: DEFAULTS[:token_version]
-
-    desc 'The IAM role or user to authenticate with. i.e. myservice-production or myuser'
-    flag :from, default_value: DEFAULTS[:from]
-
-    desc 'The IAM role name of confidant. i.e. confidant-production'
-    flag :to, default_value: DEFAULTS[:to]
-
-    desc 'The confidant user-type to authenticate as. i.e. user or service'
-    flag :user_type, default_value: DEFAULTS[:user_type]
-
-    desc 'Prompt for an MFA token.'
-    switch :mfa, default_value: DEFAULTS[:mfa]
-
-    desc 'Assume the specified IAM role.'
-    flag :assume_role, default_value: DEFAULTS[:assume_role]
-
-    desc 'Use the specified region for authentication.'
-    flag :region, default_value: DEFAULTS[:region]
+    flag 'profile', default_value: Confidant::Configurator::DEFAULT_OPTS[:profile]
 
     desc 'Logging verbosity.'
-    flag :log_level, default_value: DEFAULTS[:log_level]
+    flag 'log-level', default_value: Confidant::Configurator::DEFAULT_OPTS[:log_level]
+
+    desc 'URL of the confidant server.'
+    flag ['u', 'url']
+
+    desc 'Number of retries that should be attempted on confidant server errors.'
+    flag 'retries'
+
+    desc 'The KMS auth key to use. i.e. alias/authnz-production'
+    flag ['k', 'auth-key']
+
+    desc 'The token lifetime, in minutes.'
+    flag ['l', 'token-lifetime']
+
+    desc 'The version of the KMS auth token.'
+    flag 'token-version'
+
+    desc 'The IAM role or user to authenticate with. i.e. myservice-production or myuser'
+    flag 'from'
+
+    desc 'The IAM role name of confidant. i.e. confidant-production'
+    flag 'to'
+
+    desc 'The confidant user-type to authenticate as. i.e. user or service'
+    flag 'user-type'
+
+    desc 'Assume the specified IAM role.'
+    flag 'assume-role'
+
+    desc 'Use the specified region for authentication.'
+    flag 'region'
 
 
     ### Commands
@@ -63,12 +63,11 @@ module Confidant
     command :get_service do |c|
 
       c.desc 'The service to get.'
-      c.flag :service, default_value: DEFAULTS[:get_service][:service]
+      c.flag 'service'
 
       c.action do |global_options,options,_|
+        log.debug "Running get_service command"
 
-
-        puts "get_service command ran"
       end
     end
 
@@ -76,69 +75,39 @@ module Confidant
     ### Hooks
 
     pre do |global_options,command,options,_|
+      Logging.logger.root.level = global_options['log-level'].to_sym
 
-      cli_opts = global_options.select { |k, _| k.is_a? Symbol }
-      cli_opts[command.name] = options.select { |k, _| k.is_a? Symbol }
+      opts = clean_opts(global_options)
+      opts[command.name] = clean_opts(options)
+
+      log.debug "Parsed CLI options: #{opts}"
+      Confidant::Configurator.configure(opts, command.name)
+    end
+
+
+    # Try and clean up GLI's output into something useable.
+    def self::clean_opts( gli_opts )
+      # GLI provides String and Symbol keys for each flag/switch.
+      # We want the String keys (because some of our flags have dashes)
+      string_opts = gli_opts.select {|k, _| k.is_a?(String)}
+
+      # Convert the dashes in key names to underscores and symbolize the keys.
+      opts = {}
+      string_opts.each_pair { |k, v| opts[k.gsub('-', '_').to_sym] = v }
 
       # Convert :config_files into an array.
-      cli_opts[:config_files] = cli_opts[:config_files].split(',')
+      opts[:config_files] = opts[:config_files].split(',') if opts[:config_files]
 
-      require 'pp'
-      pp cli_opts
+      # Remove unneeded hash pairs:
+      # - nil values: GLI returns a 'nil' default for non-specified flag-type opts
+      # - false values: GLI returns a 'false' default for non-specified switch-type opts
+      # Removing false values also removes GLI's :help and :version keys
+      # - single-letter keys: these opts all have longer-form doppelgangers
+      opts.delete_if { |k,v| v.nil? || v == false || k.length == 1 }
 
-
-      true
+      #  Now, only defaulted and explicitly-specified options remain.
+      return opts
     end
 
   end
 end
-
-
-# desc 'Describe some switch here'
-# switch [:s,:switch]
-
-# desc 'Describe some flag here'
-# default_value 'the default'
-# arg_name 'The name of the argument'
-# flag [:f,:flagname]
-
-# desc 'Describe get_service here'
-# arg_name 'Describe arguments to get_service here'
-# command :get_service do |c|
-#   c.desc 'Describe a switch to get_service'
-#   c.switch :s
-
-#   c.desc 'Describe a flag to get_service'
-#   c.default_value 'default'
-#   c.flag :f
-#   c.action do |global_options,options,args|
-
-#     # Your command logic here
-     
-#     # If you have any errors, just raise them
-#     # raise "that command made no sense"
-
-#     puts "get_service command ran"
-#   end
-# end
-
-# pre do |global,command,options,args|
-#   # Pre logic here
-#   # Return true to proceed; false to abort and not call the
-#   # chosen command
-#   # Use skips_pre before a command to skip this block
-#   # on that command only
-#   true
-# end
-
-# post do |global,command,options,args|
-#   # Post logic here
-#   # Use skips_post before a command to skip this
-#   # block on that command only
-# end
-
-# on_error do |exception|
-#   # Error logic here
-#   # return false to skip default error handling
-#   true
-# end

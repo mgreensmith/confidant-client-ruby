@@ -1,37 +1,88 @@
-require 'configurability/config'
+require 'yaml'
+require 'active_support/hash_with_indifferent_access'
 
 module Confidant
   class Configurator
 
-    MANDATORY_OPTS = [:url, :auth_key, :from, :to]
+    attr_accessor :config
 
-    DEFAULTS = {
+    DEFAULT_OPTS = {
       config_files: %w( ~/.confidant /etc/confidant/config ),
       profile: 'default',
-      url: nil,
-      auth_key: nil,
-      from: nil,
-      to: nil,
-      retries: 0,
-      token_lifetime: 7,
-      token_version: 2,
-      user_type: 'service',
-      mfa: false,
-      assume_role: nil,
-      region: 'us-east-1',
-      log_level: 'info',
-      get_service: {
-        service: nil
-      }
+      log_level: 'info'
     }
 
-    def self::configure(cli_opts)
-      # How do we know which CLI opts were specified?
-      # Check for config files
-      # Once a config file is found
-      # look for the cnfigured profile.
-      # If found, merge it with CLI opts.
-      # If not found, use CLI opts only
+    DEFAULTS = {
+      token_version: 2,
+      user_type: 'service',
+      region: 'us-east-1'
+    }
+
+    MANDATORY_OPTS = {
+      global: [:url, :auth_key, :from, :to],
+      get_service: [ :service ]
+    }
+
+    def self::config
+      @config || {}
     end
+
+    def self::valid_config?(command)
+      missing_global_keys = MANDATORY_OPTS[:global] - @config.keys
+      unless missing_global_keys.empty?
+        log.error "Required config options not provided: #{missing_global_keys.join(', ')}"
+        return false
+      end
+
+      missing_command_keys = MANDATORY_OPTS[command] - @config[command].keys
+      unless missing_command_keys.empty?
+        log.error "Required config options for command '#{command}' not provided: #{missing_command_keys.join(', ')}"
+        return false
+      end
+
+      return true
+    end
+
+    def self::configure(cli_opts, command)
+      config = cli_opts
+      cli_opts[:config_files].each do |config_file|
+
+        log.debug "looking for config file: #{config_file}"
+
+        if File.exist?(File.expand_path(config_file))
+          log.debug "found config file: #{config_file}"
+
+          profile_config = config_from_file(File.expand_path(config_file), cli_opts[:profile])
+
+          # Merge the CLI options config over the file profile config
+          config = profile_config.merge(config)
+          break
+        end
+      end
+
+      config.delete(:config_files)
+      config.delete(:profile)
+      config.delete(:log_level)
+
+      log.debug "authoritative config: #{config}"
+      @config = config
+
+      return valid_config?(command)
+    end
+
+    def self::config_from_file(config_file, profile)
+      content = YAML.load_file(File.expand_path(config_file))
+
+      # Fetch options from file for the specified profile
+      profile_config = content[profile].symbolize_keys!
+
+      # Merge the :auth_context keys into the top-level hash
+      profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
+      profile_config.delete_if { |k,_| k == :auth_context }
+      log.debug "file config for profile '#{profile}': #{profile_config}"
+
+      return profile_config
+    end
+
   end
 end
