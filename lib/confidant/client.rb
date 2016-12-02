@@ -26,12 +26,13 @@ module Confidant
       response = RestClient::Request.execute(
         method: :get,
         url: url,
-        user: sapi_user,
+        user: api_user,
         password: password
       )
 
       JSON.parse(response.body)
-    rescue
+    rescue => ex
+      Confidant.log_exception(self, ex)
       return { result: false } if @suppress_errors
       raise unless @suppress_errors
     end

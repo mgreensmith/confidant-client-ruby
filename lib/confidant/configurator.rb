@@ -18,6 +18,7 @@ module Confidant
 
     # Default configuration options for the Client.
     DEFAULTS = {
+      token_lifetime: 10
       token_version: 2,
       user_type: 'service',
       region: 'us-east-1'

@@ -99,10 +99,7 @@ module Confidant
     end
 
     on_error do |ex|
-      log.error(ex.message)
-      ex.backtrace.each do |frame|
-        log.debug("\t#{frame}")
-      end
+      Confidant.log_exception(self, ex)
       false # return false to suppress standard message
     end
 

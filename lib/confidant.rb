@@ -22,4 +22,11 @@ module Confidant
   def configure(config = {})
     Configurator.configure(config)
   end
+
+  def log_exception(klass, ex)
+    klass.log.error("#{ex.class} : #{ex.message}")
+    ex.backtrace.each do |frame|
+      klass.log.debug("\t#{frame}")
+    end
+  end
 end
