@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['matt@mattgreensmith.net']
 
   spec.summary       = 'A CLI and client library for the Confidant secret management service.'
-  spec.homepage      = "https://github.com/mgreensmith/confidant-client-ruby"
+  spec.homepage      = 'https://github.com/mgreensmith/confidant-client-ruby'
   spec.license       = 'MIT'
 
   spec.files         = distfiles +
@@ -31,4 +31,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rest-client', '~> 2.0'
 
   spec.add_development_dependency 'bundler', '~> 1.13'
+  spec.add_development_dependency 'pry', '~> 0.10'
 end

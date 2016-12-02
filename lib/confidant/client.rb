@@ -4,36 +4,51 @@ require 'aws-sdk-core'
 require 'rest-client'
 
 module Confidant
-  # The Confidant Client implementaiton
+  # The Confidant Client implementation
   class Client
     TOKEN_SKEW_SECONDS = 3 * 60
     TIME_FORMAT = '%Y%m%dT%H%M%SZ'.freeze
 
-    def initialize(config)
+    def initialize(config = Confidant::Configurator.config)
       @config = config
       @kms = Aws::KMS::Client.new(region: config[:region])
+      @suppress_errors = false
     end
 
-    def get_service # rubocop:disable Style/AccessorMethodName
+    def get_service(service = nil)
+      if service.nil?
+        service_from_config = begin
+                                @config[:get_service][:service]
+                              rescue
+                                nil
+                              end
+        service = service_from_config
+        raise 'Service name must be provided via config[:get_service][:service] or method argument.' if service.nil?
+      end
       user = format('%s/%s/%s', @config[:token_version], @config[:user_type], @config[:from])
-      url = format('%s/v1/services/%s', @config[:url], @config[:get_service][:service])
+      url = format('%s/v1/services/%s', @config[:url], service)
       password = generate_token
 
       log.debug "Requesting #{url} as user #{user}"
-      resp = RestClient::Request.execute(
+      response = RestClient::Request.execute(
         method: :get,
         url: url,
         user: user,
         password: password
       )
 
-      puts resp.body
-      true
+      JSON.parse(response.body)
 
     rescue
-      resp = { result: false }.to_json
-      puts resp
-      false
+      return { result: false } if @suppress_errors
+      raise unless @suppress_errors
+    end
+
+    # The Python client suppresses all errors, returning{ result: false } instead.
+    # Toggle this behavior if called from the CLI.
+    def suppress_errors(enable = true)
+      @suppress_errors = enable
+      true
     end
 
     def generate_token

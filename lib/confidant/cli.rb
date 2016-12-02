@@ -1,6 +1,5 @@
+require 'yaml'
 require 'gli'
-require 'confidant/configurator'
-require 'confidant/client'
 
 module Confidant
   # Creates a CLI that fronts the Confidant client
@@ -15,13 +14,16 @@ module Confidant
     # 'flag' options take params
 
     desc 'Comma separated list of configuration files to use'
-    flag 'config-files', default_value: Confidant::Configurator::DEFAULT_OPTS[:config_files].join(',')
+    flag 'config-files', default_value:
+      Confidant::Configurator::DEFAULT_OPTS[:config_files].join(',')
 
     desc 'Configuration profile to use.'
-    flag 'profile', default_value: Confidant::Configurator::DEFAULT_OPTS[:profile]
+    flag 'profile', default_value:
+      Confidant::Configurator::DEFAULT_OPTS[:profile]
 
     desc 'Logging verbosity.'
-    flag 'log-level', default_value: Confidant::Configurator::DEFAULT_OPTS[:log_level]
+    flag 'log-level', default_value:
+      Confidant::Configurator::DEFAULT_OPTS[:log_level]
 
     desc 'URL of the confidant server.'
     flag %w(u url)
@@ -69,7 +71,16 @@ module Confidant
 
       c.action do |_global_options, _options, _|
         log.debug 'Running get_service command'
-        return Confidant::Client.new(Confidant::Configurator.config).get_service
+        client = Confidant::Client.new
+        client.suppress_errors
+        puts JSON.pretty_generate(client.get_service)
+      end
+    end
+
+    desc 'Show the current config'
+    command :show_config do |c|
+      c.action do |_global_options, _options, _|
+        puts Confidant::Configurator.config.to_yaml
       end
     end
 
@@ -79,11 +90,21 @@ module Confidant
       Logging.logger.root.level = global_options['log-level'].to_sym
 
       opts = clean_opts(global_options)
-      opts[command.name] = clean_opts(options)
+      opts[command.name] = clean_opts(options) if options
 
       log.debug "Parsed CLI options: #{opts}"
       Confidant::Configurator.configure(opts, command.name)
     end
+
+    on_error do |ex|
+      log.error(ex.message)
+      ex.backtrace.each do |frame|
+        log.debug("\t#{frame}")
+      end
+      false # return false to suppress standard message
+    end
+
+    ### Helper methods
 
     # Try and clean up GLI's output into something useable.
     def self::clean_opts(gli_opts)

@@ -60,6 +60,38 @@ COMMANDS
     help        - Shows a list of commands or help for one command
 ```
 
+### Library Usage
+
+```ruby
+require 'confidant'
+
+# Default values are the same as the CLI option defaults.
+#
+# Set subcommand names as top-level keys,
+# with a hash value containing subcommand options.
+#
+# Options provided in this hash are merged with
+# the profile configuration from the first available config file,
+# with these options taking precedence.
+Confidant.configure(
+    auth_key: 'alias/authnz-production',
+    from: 'myservice-production',
+    to: 'confidant-production',
+    get_service: {
+        service: 'myservice-production'
+    }
+)
+
+# An insufficient or malformed config will raise `Confidant::ConfigurationError`
+
+# Fetch the credentials from the Confidant server
+# for the preconfigured service, as a Hash.
+credentials = Confidant::Client.get_service
+
+# Or fetch credentials for a different service:
+credentials = Confidant::Client.get_service('my-other-service')
+```
+
 ### WARNING
 
 This client is pre-alpha, and does not have feature parity with the official Python client!

@@ -2,6 +2,10 @@ require 'yaml'
 require 'active_support/hash_with_indifferent_access'
 
 module Confidant
+  # An invalid configuration was provided
+  class ConfigurationError < StandardError
+  end
+
   # Builds configuration for the Confidant client
   class Configurator
     attr_accessor :config
@@ -30,48 +34,68 @@ module Confidant
       @config || {}
     end
 
-    def self::valid_config?(command)
+    def self::validate_config(command = nil)
       missing_global_keys = MANDATORY_CONFIG_KEYS[:global] - @config.keys
       unless missing_global_keys.empty?
-        log.error "Required config options not provided: #{missing_global_keys.join(', ')}"
-        return false
+        return [false, "Required config options not provided: #{missing_global_keys.join(', ')}"]
       end
 
-      missing_command_keys = MANDATORY_CONFIG_KEYS[command] - @config[command].keys
-      unless missing_command_keys.empty?
-        log.error "Required config options for command '#{command}' not provided: #{missing_command_keys.join(', ')}"
-        return false
+      if command && MANDATORY_CONFIG_KEYS[command]
+        log.debug "Validating config for command: #{command}"
+        log.debug @config
+        command_config = @config[command] || {} # maybe they didn't provide any subcommand config.
+        missing_command_keys = MANDATORY_CONFIG_KEYS[command] - command_config.keys
+        unless missing_command_keys.empty?
+          return [false, "Required config options for command '#{command}' not provided: #{missing_command_keys.join(', ')}"]
+        end
+      else
+        # if we're not validating for a specific command
+        # (i.e. this is a config for _all_ commands, not from the CLI),
+        # find and validate hashes for all configured subcommands.
+        MANDATORY_CONFIG_KEYS.each do |k, v|
+          next unless @config[k]
+          missing_command_keys = v - @config[k].keys
+          unless missing_command_keys.empty?
+            return [false, "Required config options for command '#{k}' not provided: #{missing_command_keys.join(', ')}"]
+          end
+        end
       end
 
-      true
+      [true, nil]
     end
 
-    def self::configure(cli_opts, command)
-      config = cli_opts
-      cli_opts[:config_files].each do |config_file|
+    def self::configure(opts, command = nil)
+      # Merge 'opts' onto DEFAULT_OPTS so that we at least know how to read files.
+      # This is a noop if we were called from CLI,
+      # as those keys are defaults in GLI and guaranteed to exist in 'opts',
+      # but this is necessary if we were invoked as a lib.
+      config = DEFAULT_OPTS.dup.merge(opts)
+
+      config[:config_files].each do |config_file|
         log.debug "looking for config file: #{config_file}"
 
         next unless File.exist?(File.expand_path(config_file))
         log.debug "found config file: #{config_file}"
 
-        profile_config = config_from_file(File.expand_path(config_file), cli_opts[:profile])
+        profile_config = config_from_file(File.expand_path(config_file), config[:profile])
 
         # Merge the CLI options config over the file profile config
         config = profile_config.merge(config)
         break
       end
 
-      config.delete(:config_files)
-      config.delete(:profile)
-      config.delete(:log_level)
+      # We don't need any of the internal DEFAULT_OPTS any longer
+      DEFAULT_OPTS.keys.each { |k| config.delete(k) }
 
-      # Merge config onto local DEFAULTS
+      # Merge config onto local DEFAULTS to backfill any keys that are needed for KMS.
       config = DEFAULTS.dup.merge(config)
 
       log.debug "authoritative config: #{config}"
       @config = config
 
-      valid_config?(command)
+      valid, error_message = validate_config(command)
+      raise ConfigurationError, error_message unless valid
+      @config
     end
 
     def self::config_from_file(config_file, profile)
