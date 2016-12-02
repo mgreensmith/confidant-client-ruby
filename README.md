@@ -4,31 +4,19 @@ This is a client for [Confidant](https://lyft.github.io/confidant), an open sour
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'confidant'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
     $ gem install confidant
 
 ## Configuration
 
-This client supports the config file format of the [official Python client](https://lyft.github.io/confidant/basics/client/), but only in YAML format for now.
+This client supports the config file format of the [official Python client](https://lyft.github.io/confidant/basics/client/).
 
-The client does not merge config from multiple files; it uses the profile configuration from the first file it finds.
+The client does not merge config from multiple files; it expects to find a configuraton block for the specified `profile` in the first file it finds.
 
-CLI-provided options are merged with the configuration from file, with CLI options taking precedence.
+When using the CLI, CLI-provided options are merged with config file options, with CLI options taking precedence.
 
-## Usage
+When using the client as a Ruby library, options passed as parameters to `Confidant.configure` are merged with config file options, with parameter options taking precedence.
 
-### CLI
+## CLI Usage
 
 ```
 NAME
@@ -60,19 +48,26 @@ COMMANDS
     help        - Shows a list of commands or help for one command
 ```
 
-### Library Usage
+## Library Usage
+
+Require the client.
 
 ```ruby
 require 'confidant'
+```
 
-# Default values are the same as the CLI option defaults.
-#
-# Set subcommand names as top-level keys,
-# with a hash value containing subcommand options.
-#
-# Options provided in this hash are merged with
-# the profile configuration from the first available config file,
-# with these options taking precedence.
+Configure the `Confidant` module with some/all/no config options. Default values are the same as the CLI option defaults.
+
+Key names match the long-form CLI option flag names, as symbols, with dashes becoming underscores. e.g. `--log-level` is `:log_level`.
+
+For command-level options, provide the command name as a top-level key, with a hash value containing options for that command. e.g. `get_service: { service: 'myservice' }`
+
+Options provided in this hash are merged with any config options found in the specified `:profile` section of the first-existing file from `:config_files`, with method options taking precedence over file options.
+
+An insufficient or malformed config, or a missing `:profile` section in a config file, will raise `Confidant::ConfigurationError`
+
+```ruby
+# Provide a few explicit options:
 Confidant.configure(
     auth_key: 'alias/authnz-production',
     from: 'myservice-production',
@@ -82,14 +77,21 @@ Confidant.configure(
     }
 )
 
-# An insufficient or malformed config will raise `Confidant::ConfigurationError`
+# Or just use options from config files:
+Confidant.configure
+```
 
-# Fetch the credentials from the Confidant server
-# for the preconfigured service, as a Hash.
-credentials = Confidant::Client.get_service
+Create a new `Confidant::Client`, and fetch credentials from the Confidant server. JSON responses from the server are converted to Ruby `Hash`es.
 
-# Or fetch credentials for a different service:
-credentials = Confidant::Client.get_service('my-other-service')
+```ruby
+client = Confidant::Client.new
+
+credentials = client.get_service('myservice-production')
+
+# If a service name was preconfigured,
+# i.e. `get_service: { service: 'myservice' }` exists in config,
+# the service name parameter can be excluded:
+credentials = client.get_service
 ```
 
 ### WARNING
@@ -98,12 +100,12 @@ This client is pre-alpha, and does not have feature parity with the official Pyt
 
 #### Things that work
 
-- The `get_service` CLI subcommand can fetch service credentials using a v2 KMS authentication token.
+- The `get_service` CLI command (`Client.get_service`) can fetch service credentials from a Confidant server using a v2 KMS authentication token.
+- All currently-available CLI options are correctly configurable.
 
 #### Things that have not been implemented yet
 
-- Any other CLI subcommand, notably everything to do with server-blinded credentials
-- JSON config files
+- Any other CLI command, notably everything to do with server-blinded credentials
 - API retries/backoff
 - The `confidant-format` formatter
 - KMS v1 auth tokens

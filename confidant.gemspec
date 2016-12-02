@@ -12,7 +12,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Matt Greensmith']
   spec.email         = ['matt@mattgreensmith.net']
 
-  spec.summary       = 'A CLI and client library for the Confidant secret management service.'
+  spec.summary       = 'A CLI and client library for the ' \
+                       'Confidant secret management service.'
   spec.homepage      = 'https://github.com/mgreensmith/confidant-client-ruby'
   spec.license       = 'MIT'
 
