@@ -8,9 +8,47 @@ This is a client for [Confidant](https://lyft.github.io/confidant), an open sour
 
 ## Configuration
 
-This client supports the config file format of the [official Python client](https://lyft.github.io/confidant/basics/client/).
+This client is compatible with the config file format of the [official Python client](https://lyft.github.io/confidant/basics/client/); it should be a drop-in replacement.
 
-The client does not merge config from multiple files; it expects to find a configuraton block for the specified `profile` in the first file it finds.
+The client will automatically look in `~/.confidant` and `/etc/confidant/config` for its configuration. Alternate config files can be specified via the `--config-files` (Ruby `:config_files`) option. The client does not merge config from multiple files; it expects to find a configuration block for the specified `--profile` (Ruby: `:profile`) in the first file it finds, with a default profile of `default`.
+
+The following configuration is supported, with the listed defaults. Some defaults differ from the official Python client, namely `user_type` and `region`. Additionally, this client supports per-command configuration: options provided within config keys named for a CLI command (or `Confidant::Client` method) will be used as to configure that command.
+
+```yaml
+default:
+
+  url: nil
+  auth_key: nil
+
+  # Unlike the official Python client, this client configures
+  # these options in the top-level config.
+  from: nil
+  to: nil
+  user_type: service
+
+  # Provided for compatibility with the official Python client.
+  # Any configured options in auth_context will be flattened into
+  # the top-level config, and will override provided top-level values.
+  auth_context:
+    from: nil
+    to: nil
+    user_type: service
+
+  token_lifetime: 10
+  token_version: 2
+
+  region: us-east-1
+
+  # Example of per-command configuration for the get_service command
+  # get_service:
+  #   service: nil
+
+  # Not yet implemented in this client:
+  # retries: 0
+  # backoff: 1
+  # token_cache_file: '/run/confidant/confidant_token'
+  # assume_role: nil
+```
 
 When using the CLI, CLI-provided options are merged with config file options, with CLI options taking precedence.
 
@@ -46,6 +84,7 @@ GLOBAL OPTIONS
 COMMANDS
     get_service - Get credentials for a service
     help        - Shows a list of commands or help for one command
+    show_config - Show the current config
 ```
 
 ## Library Usage
@@ -56,15 +95,9 @@ Require the client.
 require 'confidant'
 ```
 
-Configure the `Confidant` module with some/all/no config options. Default values are the same as the CLI option defaults.
+Configure the library via `Confidant.configure`.
 
-Key names match the long-form CLI option flag names, as symbols, with dashes becoming underscores. e.g. `--log-level` is `:log_level`.
-
-For command-level options, provide the command name as a top-level key, with a hash value containing options for that command. e.g. `get_service: { service: 'myservice' }`
-
-Options provided in this hash are merged with any config options found in the specified `:profile` section of the first-existing file from `:config_files`, with method options taking precedence over file options.
-
-An insufficient or malformed config, or a missing `:profile` section in a config file, will raise `Confidant::ConfigurationError`
+An insufficiently-specified config, or any errors during configuration, will raise `Confidant::ConfigurationError`
 
 ```ruby
 # Provide a few explicit options:
@@ -77,11 +110,11 @@ Confidant.configure(
     }
 )
 
-# Or just use options from config files:
+# Or choose to use options from config files only:
 Confidant.configure
 ```
 
-Create a new `Confidant::Client`, and fetch credentials from the Confidant server. JSON responses from the server are converted to Ruby `Hash`es.
+Create a new `Confidant::Client`, and fetch credentials from the Confidant server. JSON responses from the server are returned as Ruby `Hash`es.
 
 ```ruby
 client = Confidant::Client.new
