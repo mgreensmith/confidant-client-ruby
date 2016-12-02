@@ -15,54 +15,75 @@ module Confidant
       @suppress_errors = false
     end
 
+    # Return a Hash of credentials from the confidant API
+    # for +service+, either explicitly-provided, or from config.
     def get_service(service = nil)
-      if service.nil?
-        service_from_config = begin
-                                @config[:get_service][:service]
-                              rescue
-                                nil
-                              end
-        service = service_from_config
-        raise 'Service name must be provided via config[:get_service][:service] or method argument.' if service.nil?
-      end
-      user = format('%s/%s/%s', @config[:token_version], @config[:user_type], @config[:from])
-      url = format('%s/v1/services/%s', @config[:url], service)
+      target_service = service_name(service)
+      url = format('%s/v1/services/%s', @config[:url], target_service)
       password = generate_token
 
-      log.debug "Requesting #{url} as user #{user}"
+      log.debug "Requesting #{url} as user #{api_user}"
       response = RestClient::Request.execute(
         method: :get,
         url: url,
-        user: user,
+        user: sapi_user,
         password: password
       )
 
       JSON.parse(response.body)
-
     rescue
       return { result: false } if @suppress_errors
       raise unless @suppress_errors
     end
 
-    # The Python client suppresses all errors, returning{ result: false } instead.
+    # Return the name of the service for which we
+    # should fetch credentials from the confidant API.
+    # Returns +service+ if provided, or the config
+    # value at @config[:get_service][:service]
+    # Raises +ConfigurationError+ if no service was
+    # provided or configured.
+    def service_name(service = nil)
+      return service unless service.nil?
+      if @config[:get_service] && @config[:get_service][:service]
+        return @config[:get_service][:service]
+      end
+      raise 'Service name must be specifid, or provided in config as ' \
+            '{get_service => service}' if service.nil?
+    end
+
+    # Return the name of the user that will connect to the confidant API
+    # TODO(v1-auth-support): Support v1-style user names.
+    def api_user
+      format(
+        '%s/%s/%s',
+        @config[:token_version],
+        @config[:user_type],
+        @config[:from]
+      )
+    end
+
+    # The Python client suppresses all errors,
+    # returning { result: false } instead.
     # Toggle this behavior if called from the CLI.
     def suppress_errors(enable = true)
       @suppress_errors = enable
       true
     end
 
+    # Return an auth token for the confidant service,
+    # encrypted via KMS.
     def generate_token
-      raise 'This client only supports KMS v2 auth tokens.' if @config[:token_version].to_i != 2
+      # TODO(v1-auth-support): Handle the different encryption_context
+      if @config[:token_version].to_i != 2
+        raise 'This client only supports KMS v2 auth tokens.'
+      end
 
       now = Time.now.utc
-
-      start_time = now - TOKEN_SKEW_SECONDS
-      not_before = start_time.strftime(TIME_FORMAT)
-
-      end_time = start_time + (@config[:token_lifetime].to_i * 60)
-      not_after = end_time.strftime(TIME_FORMAT)
-
-      payload = { not_before: not_before, not_after: not_after }.to_json
+      payload = {
+        not_before: (now - TOKEN_SKEW_SECONDS).strftime(TIME_FORMAT),
+        not_after: (now - TOKEN_SKEW_SECONDS +
+          (@config[:token_lifetime].to_i * 60)).strftime(TIME_FORMAT)
+      }.to_json
 
       encrypt_params = {
         key_id: @config[:auth_key],
@@ -76,8 +97,6 @@ module Confidant
 
       log.debug "Asking KMS to encrypt: #{encrypt_params}"
       resp = @kms.encrypt(encrypt_params)
-
-      log.debug "Encrypted KMS data: #{Base64.strict_encode64(resp.ciphertext_blob)}"
 
       Base64.strict_encode64(resp.ciphertext_blob)
     end

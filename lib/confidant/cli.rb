@@ -37,7 +37,8 @@ module Confidant
     desc 'The version of the KMS auth token.'
     flag 'token-version'
 
-    desc 'The IAM role or user to authenticate with. i.e. myservice-production or myuser'
+    desc 'The IAM role or user to authenticate with. ' \
+         'i.e. myservice-production or myuser'
     flag 'from'
 
     desc 'The IAM role name of confidant. i.e. confidant-production'
@@ -54,7 +55,8 @@ module Confidant
     # desc 'Assume the specified IAM role.'
     # flag 'assume-role'
 
-    # desc 'Number of retries that should be attempted on confidant server errors.'
+    # desc 'Number of retries that should be attempted on ' \
+    #      'confidant server errors.'
     # flag 'retries'
 
     # 'switch' options are booleans
@@ -117,11 +119,13 @@ module Confidant
       string_opts.each_pair { |k, v| opts[k.tr('-', '_').to_sym] = v }
 
       # Convert :config_files into an array.
-      opts[:config_files] = opts[:config_files].split(',') if opts[:config_files]
+      if opts[:config_files]
+        opts[:config_files] = opts[:config_files].split(',')
+      end
 
       # Remove unneeded hash pairs:
-      # - nil values: GLI returns a 'nil' default for non-specified flag-type opts
-      # - false values: GLI returns a 'false' default for non-specified switch-type opts
+      # - nils: GLI returns 'nil' default for non-specified flag-type opts
+      # - false: GLI returns 'false' default for non-specified switch-type opts
       # Removing false values also removes GLI's :help and :version keys
       # - single-letter keys: these opts all have longer-form doppelgangers
       opts.delete_if { |k, v| v.nil? || v == false || k.length == 1 }

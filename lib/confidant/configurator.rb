@@ -2,10 +2,6 @@ require 'yaml'
 require 'active_support/hash_with_indifferent_access'
 
 module Confidant
-  # An invalid configuration was provided
-  class ConfigurationError < StandardError
-  end
-
   # Builds configuration for the Confidant client
   class Configurator
     attr_accessor :config
@@ -50,7 +46,7 @@ module Confidant
     #
 
     def self::configure(opts, command = nil)
-      # Merge 'opts' onto DEFAULT_OPTS so that we at least know how to read files.
+      # Merge 'opts' onto DEFAULT_OPTS so that we can self-configure.
       # This is a noop if we were called from CLI,
       # as those keys are defaults in GLI and guaranteed to exist in 'opts',
       # but this is necessary if we were invoked as a lib.
@@ -62,7 +58,10 @@ module Confidant
         next unless File.exist?(File.expand_path(config_file))
         log.debug "found config file: #{config_file}"
 
-        profile_config = config_from_file(File.expand_path(config_file), config[:profile])
+        profile_config = config_from_file(
+          File.expand_path(config_file),
+          config[:profile]
+        )
 
         # Merge the CLI options config over the file profile config
         config = profile_config.merge(config)
@@ -72,7 +71,8 @@ module Confidant
       # We don't need any of the internal DEFAULT_OPTS any longer
       DEFAULT_OPTS.keys.each { |k| config.delete(k) }
 
-      # Merge config onto local DEFAULTS to backfill any keys that are needed for KMS.
+      # Merge config onto local DEFAULTS
+      # to backfill any keys that are needed for KMS.
       config = DEFAULTS.dup.merge(config)
 
       validate_config(config, command)
@@ -113,10 +113,16 @@ module Confidant
     def self::validate_config(config, command = nil)
       missing_keys = MANDATORY_CONFIG_KEYS[:global] - config.keys
 
-      # If +command+ was provided, this is a CLI-provided config for a single command,
-      # so only verify presence of mandatory keys for that command.
+      # If +command+ was provided, this is a CLI-provided config
+      # for a single command, so only verify presence of mandatory keys
+      # for that command.
       # Otherwise, verify presence of mandatory keys for all commands.
-      commands_to_verify = command ? [command.to_sym] : MANDATORY_CONFIG_KEYS.keys.reject(:global)
+      commands_to_verify = if command
+                             [command.to_sym]
+                           else
+                             MANDATORY_CONFIG_KEYS.keys.reject(:global)
+                           end
+
       commands_to_verify.each do |cmd|
         missing = missing_keys_for_command(cmd, config)
         next if missing.empty?
@@ -124,7 +130,8 @@ module Confidant
       end
 
       return true if missing_keys.empty?
-      raise ConfigurationError, "Missing required config keys: #{missing_keys.join(', ')}"
+      raise ConfigurationError,
+            "Missing required config keys: #{missing_keys.join(', ')}"
     end
 
     # Given a +command+, return an +array+ of
@@ -133,7 +140,8 @@ module Confidant
     def self::missing_keys_for_command(command, config)
       mandatory_keys = MANDATORY_CONFIG_KEYS[command]
       return [] if mandatory_keys.empty?
-      return mandatory_keys unless config[command] && config[command].is_a?(Hash)
+      return mandatory_keys unless config[command] &&
+                                   config[command].is_a?(Hash)
       mandatory_keys - config[command].keys
     end
   end
