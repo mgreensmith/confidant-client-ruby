@@ -10,59 +10,44 @@ module Confidant
   class Configurator
     attr_accessor :config
 
-    # Default configraion options for this tool itself, rather than Confidant.
-    # We pass these through to the CLI.
+    # Default configraion options for the Confidant module
+    # and this Configurator class, and not for the Client.
+    # Pass these through to the CLI for use in the `pre` hook,
+    # and strip them out of the final config hash used by the Client.
     DEFAULT_OPTS = {
       config_files: %w( ~/.confidant /etc/confidant/config ),
       profile: 'default',
       log_level: 'info'
     }.freeze
 
-    # Default configuration options for Confidant/KMS.
+    # Default configuration options for the Client.
     DEFAULTS = {
       token_version: 2,
       user_type: 'service',
       region: 'us-east-1'
     }.freeze
 
+    # Keys that must exist in the final config in order for
+    # the Client to be able to function.
     MANDATORY_CONFIG_KEYS = {
       global: [:url, :auth_key, :from, :to],
       get_service: [:service]
     }.freeze
 
+    # The loaded config hash.
     def self::config
       @config || {}
     end
 
-    def self::validate_config(command = nil)
-      missing_global_keys = MANDATORY_CONFIG_KEYS[:global] - @config.keys
-      unless missing_global_keys.empty?
-        return [false, "Required config options not provided: #{missing_global_keys.join(', ')}"]
-      end
-
-      if command && MANDATORY_CONFIG_KEYS[command]
-        log.debug "Validating config for command: #{command}"
-        log.debug @config
-        command_config = @config[command] || {} # maybe they didn't provide any subcommand config.
-        missing_command_keys = MANDATORY_CONFIG_KEYS[command] - command_config.keys
-        unless missing_command_keys.empty?
-          return [false, "Required config options for command '#{command}' not provided: #{missing_command_keys.join(', ')}"]
-        end
-      else
-        # if we're not validating for a specific command
-        # (i.e. this is a config for _all_ commands, not from the CLI),
-        # find and validate hashes for all configured subcommands.
-        MANDATORY_CONFIG_KEYS.each do |k, v|
-          next unless @config[k]
-          missing_command_keys = v - @config[k].keys
-          unless missing_command_keys.empty?
-            return [false, "Required config options for command '#{k}' not provided: #{missing_command_keys.join(', ')}"]
-          end
-        end
-      end
-
-      [true, nil]
-    end
+    # Given a hash of configuration +opts+, and optionally the name
+    # of a +command+ that may have mandatory config options,
+    # load configuration from files, merge config keys together,
+    # and validate the presence of sufficient top-level config keys
+    # and command-specific config keys to be able to use the client.
+    #
+    # Stores the final merged config in Configurator.config, and
+    # returns it for convenience.
+    #
 
     def self::configure(opts, command = nil)
       # Merge 'opts' onto DEFAULT_OPTS so that we at least know how to read files.
@@ -90,26 +75,66 @@ module Confidant
       # Merge config onto local DEFAULTS to backfill any keys that are needed for KMS.
       config = DEFAULTS.dup.merge(config)
 
+      validate_config(config, command)
       log.debug "authoritative config: #{config}"
       @config = config
-
-      valid, error_message = validate_config(command)
-      raise ConfigurationError, error_message unless valid
       @config
     end
 
+    private_class_method
+
+    # Given the pathname of a YAML or JSON +config_file+ and the name
+    # of a config +profile+ within that file, load the file and
+    # return a +Hash+ of the contents of that profile key.
     def self::config_from_file(config_file, profile)
       content = YAML.load_file(File.expand_path(config_file))
 
       # Fetch options from file for the specified profile
+      unless content.key?(profile)
+        raise ConfigurationError,
+              "Profile '#{profile}' not found in '#{config_file}"
+      end
       profile_config = content[profile].symbolize_keys!
 
-      # Merge the :auth_context keys into the top-level hash
+      # Merge the :auth_context keys into the top-level hash.
       profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
       profile_config.delete_if { |k, _| k == :auth_context }
       log.debug "file config for profile '#{profile}': #{profile_config}"
 
       profile_config
+    end
+
+    # Validate the provided +config+ for the presence of
+    # all global mandatory config keys. If +command+ is provided,
+    # validate the presence of all mandatory config keys specific
+    # to that command, otherwise validate that mandatory config keys
+    # exist for any command keys that exist in the top-level hash.
+    # Raises +ConfigurationError+ if mandatory config options are missing.
+    def self::validate_config(config, command = nil)
+      missing_keys = MANDATORY_CONFIG_KEYS[:global] - config.keys
+
+      # If +command+ was provided, this is a CLI-provided config for a single command,
+      # so only verify presence of mandatory keys for that command.
+      # Otherwise, verify presence of mandatory keys for all commands.
+      commands_to_verify = command ? [command.to_sym] : MANDATORY_CONFIG_KEYS.keys.reject(:global)
+      commands_to_verify.each do |cmd|
+        missing = missing_keys_for_command(cmd, config)
+        next if missing.empty?
+        missing_keys << "#{cmd}[#{missing.join(',')}]"
+      end
+
+      return true if missing_keys.empty?
+      raise ConfigurationError, "Missing required config keys: #{missing_keys.join(', ')}"
+    end
+
+    # Given a +command+, return an +array+ of
+    # the key names from MANDATORY_CONFIG_KEYS for that command,
+    # that are not present in the provided +config+
+    def self::missing_keys_for_command(command, config)
+      mandatory_keys = MANDATORY_CONFIG_KEYS[command]
+      return [] if mandatory_keys.empty?
+      return mandatory_keys unless config[command] && config[command].is_a?(Hash)
+      mandatory_keys - config[command].keys
     end
   end
 end
