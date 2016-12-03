@@ -9,6 +9,8 @@ module Confidant
     TOKEN_SKEW_SECONDS = 3 * 60
     TIME_FORMAT = '%Y%m%dT%H%M%SZ'.freeze
 
+    attr_accessor :config
+
     def initialize(config = Confidant::Configurator.config)
       @config = config
       @kms = Aws::KMS::Client.new(region: config[:region])
@@ -60,7 +62,8 @@ module Confidant
       if @config[:get_service] && @config[:get_service][:service]
         return @config[:get_service][:service]
       end
-      raise 'Service name must be specified, or provided in config as ' \
+      raise ConfigurationError,
+            'Service name must be specified, or provided in config as ' \
             '{get_service => service}' if service.nil?
     end
 
@@ -109,7 +112,8 @@ module Confidant
     def generate_token
       # TODO(v1-auth-support): Handle the different encryption_context
       if @config[:token_version].to_i != 2
-        raise 'This client only supports KMS v2 auth tokens.'
+        raise ConfigurationError,
+              'This client only supports KMS v2 auth tokens.'
       end
 
       encrypt_params = {
