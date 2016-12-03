@@ -7,3 +7,6 @@
 /pkg/
 /spec/reports/
 /tmp/
+.pryrc
+.rspec
+.ruby-gemset
