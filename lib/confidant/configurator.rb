@@ -11,7 +11,7 @@ module Confidant
     # Pass these through to the CLI for use in the `pre` hook,
     # and strip them out of the final config hash used by the Client.
     DEFAULT_OPTS = {
-      config_files: %w( ~/.confidant /etc/confidant/config ),
+      config_files: %w(~/.confidant /etc/confidant/config),
       profile: 'default',
       log_level: 'info'
     }.freeze

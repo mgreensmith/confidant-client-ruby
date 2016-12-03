@@ -65,7 +65,7 @@ module Confidant
       end
       raise ConfigurationError,
             'Service name must be specified, or provided in config as ' \
-            '{get_service => service}' if service.nil?
+            '{get_service => service}'
     end
 
     # Return the name of the user that will connect to the confidant API
@@ -104,8 +104,7 @@ module Confidant
       )
 
       { not_before: start_time.strftime(TIME_FORMAT),
-        not_after: end_time.strftime(TIME_FORMAT)
-      }.to_json
+        not_after: end_time.strftime(TIME_FORMAT) }.to_json
     end
 
     # Return an auth token for the confidant service,
