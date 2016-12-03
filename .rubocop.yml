@@ -1,4 +1,4 @@
 MethodLength:
-  Enabled: false
+  Max: 20
 Metrics/AbcSize:
-  Enabled: false
+  Max: 20

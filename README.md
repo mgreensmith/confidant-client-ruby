@@ -10,20 +10,33 @@ This is a client for [Confidant](https://lyft.github.io/confidant), an open sour
 
 This client is compatible with the config file format of the [official Python client](https://lyft.github.io/confidant/basics/client/); it should be a drop-in replacement.
 
-The client will automatically look in `~/.confidant` and `/etc/confidant/config` for its configuration. Alternate config files can be specified via the `--config-files` (Ruby `:config_files`) option. The client does not merge config from multiple files; it expects to find a configuration block for the specified `--profile` (Ruby: `:profile`) in the first file it finds, with a default profile of `default`.
+The client will automatically look in `~/.confidant` and `/etc/confidant/config` for its configuration. Alternate config files can be specified via the `--config-files` (Ruby `:config_files`) option. Config files can be YAML or JSON format.
+
+The configuration file supports profiles, which let you specify multiple environments in the same file. The default profile is `default`, an alternate profile can be specified with the `--profile` (Ruby: `:profile`) option.
+
+The client does not merge config from multiple files; it expects to find a configuration block for the specified profile in the first file it finds.
 
 The following configuration is supported, with the listed defaults. Some defaults differ from the official Python client, namely `user_type` and `region`. Additionally, this client supports per-command configuration: options provided within config keys named for a CLI command (or `Confidant::Client` method) will be used as to configure that command.
 
 ```yaml
 default:
 
+  # URL of the confidant server.
   url: nil
+
+  # The KMS auth key to use. i.e. alias/authnz-production
   auth_key: nil
 
-  # Unlike the official Python client, this client configures
-  # these options in the top-level config.
+  # Note: unlike the official Python client, this client configures
+  # encryption-context-related options in the top-level config.
+
+  # The IAM role or user to authenticate with. i.e. myservice-production or myuser
   from: nil
+
+  # The IAM role name of confidant. i.e. confidant-production
   to: nil
+
+  # The confidant user-type to authenticate as. i.e. user or service
   user_type: service
 
   # Provided for compatibility with the official Python client.
@@ -34,23 +47,27 @@ default:
     to: nil
     user_type: service
 
+  # The token lifetime, in minutes.
   token_lifetime: 10
+
+  # The version of the KMS auth token.
   token_version: 2
 
+  # Use the specified AWS region for authentication.
   region: us-east-1
 
   # Example of per-command configuration for the get_service command
   # get_service:
-  #   service: nil
+  #   service: my-service
 
-  # Not yet implemented in this client:
+  # Not yet implemented in this client, will be ignored if provided:
   # retries: 0
   # backoff: 1
   # token_cache_file: '/run/confidant/confidant_token'
   # assume_role: nil
 ```
 
-When using the CLI, CLI-provided options are merged with config file options, with CLI options taking precedence.
+When using the CLI, CLI-provided option flags are merged with config file options, with CLI options taking precedence.
 
 When using the client as a Ruby library, options passed as parameters to `Confidant.configure` are merged with config file options, with parameter options taking precedence.
 
@@ -87,6 +104,8 @@ COMMANDS
     show_config - Show the current config
 ```
 
+The CLI generally returns JSON to `STDOUT`, for drop-in compatibility with the official Python client. However, this CLI writes logs to `STDERR`, so if you intend to parse shell output, you should redirect `STDERR` elsewhere, i.e. `confidant 2>/some/log/file`
+
 ## Library Usage
 
 Require the client.
@@ -100,7 +119,12 @@ Configure the library via `Confidant.configure`.
 An insufficiently-specified config, or any errors during configuration, will raise `Confidant::ConfigurationError`
 
 ```ruby
-# Provide a few explicit options:
+# Configure Confidant using options from config file only:
+Confidant.configure
+
+# Or provide options as parameters, which will be merged onto
+# the options from the config file, with parameter options
+# taking precedence:
 Confidant.configure(
     auth_key: 'alias/authnz-production',
     from: 'myservice-production',
@@ -109,12 +133,11 @@ Confidant.configure(
         service: 'myservice-production'
     }
 )
-
-# Or choose to use options from config files only:
-Confidant.configure
 ```
 
-Create a new `Confidant::Client`, and fetch credentials from the Confidant server. JSON responses from the server are returned as Ruby `Hash`es.
+Create a new `Confidant::Client`, and fetch credentials from the Confidant server.
+
+JSON responses from the server are returned as Ruby `Hash`es.
 
 ```ruby
 client = Confidant::Client.new
@@ -127,7 +150,7 @@ credentials = client.get_service('myservice-production')
 credentials = client.get_service
 ```
 
-### WARNING
+## WARNING
 
 This client is pre-alpha, and does not have feature parity with the official Python client!
 
