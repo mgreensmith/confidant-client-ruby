@@ -73,6 +73,32 @@ module Confidant
       @config
     end
 
+    # Validate the provided +config+ for the presence of
+    # all global mandatory config keys. If +command+ is provided,
+    # validate the presence of all mandatory config keys specific
+    # to that command, otherwise validate that mandatory config keys
+    # exist for any command keys that exist in the top-level hash.
+    # Raises +ConfigurationError+ if mandatory config options are missing.
+    def self::validate_config(config, command = nil)
+      missing_keys = MANDATORY_CONFIG_KEYS[:global] - config.keys
+
+      commands_to_verify = if command
+                             [command.to_sym]
+                           else
+                             (MANDATORY_CONFIG_KEYS.keys & config.keys)
+                           end
+
+      commands_to_verify.each do |cmd|
+        missing = missing_keys_for_command(cmd, config)
+        next if missing.empty?
+        missing_keys << "#{cmd}[#{missing.join(',')}]"
+      end
+
+      return true if missing_keys.empty?
+      raise ConfigurationError,
+            "Missing required config keys: #{missing_keys.join(', ')}"
+    end
+
     private_class_method
 
     # Return a hash of the config for the provided +profile+ from
@@ -106,36 +132,6 @@ module Confidant
       profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
       profile_config.delete_if { |k, _| k == :auth_context }
       profile_config
-    end
-
-    # Validate the provided +config+ for the presence of
-    # all global mandatory config keys. If +command+ is provided,
-    # validate the presence of all mandatory config keys specific
-    # to that command, otherwise validate that mandatory config keys
-    # exist for any command keys that exist in the top-level hash.
-    # Raises +ConfigurationError+ if mandatory config options are missing.
-    def self::validate_config(config, command = nil)
-      missing_keys = MANDATORY_CONFIG_KEYS[:global] - config.keys
-
-      # If +command+ was provided, this is a CLI-provided config
-      # for a single command, so only verify presence of mandatory keys
-      # for that command.
-      # Otherwise, verify presence of mandatory keys for all commands.
-      commands_to_verify = if command
-                             [command.to_sym]
-                           else
-                             MANDATORY_CONFIG_KEYS.keys.reject(:global)
-                           end
-
-      commands_to_verify.each do |cmd|
-        missing = missing_keys_for_command(cmd, config)
-        next if missing.empty?
-        missing_keys << "#{cmd}[#{missing.join(',')}]"
-      end
-
-      return true if missing_keys.empty?
-      raise ConfigurationError,
-            "Missing required config keys: #{missing_keys.join(', ')}"
     end
 
     # Given a +command+, return an +array+ of

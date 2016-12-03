@@ -12,6 +12,7 @@ module Confidant
     attr_accessor :config
 
     def initialize(config = Confidant::Configurator.config)
+      Confidant::Configurator.validate_config(config)
       @config = config
       @kms = Aws::KMS::Client.new(region: config[:region])
       @suppress_errors = false
