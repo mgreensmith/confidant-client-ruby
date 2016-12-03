@@ -84,7 +84,7 @@ module Confidant
     # @suppress_errors is true,
     # rather than raising exceptions.
     def api_error_response
-      { result: false }
+      { 'result' => 'false' }
     end
 
     # The content of a confidant auth token payload,

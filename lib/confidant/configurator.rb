@@ -142,7 +142,7 @@ module Confidant
     # the key names from MANDATORY_CONFIG_KEYS for that command,
     # that are not present in the provided +config+
     def self::missing_keys_for_command(command, config)
-      mandatory_keys = MANDATORY_CONFIG_KEYS[command]
+      mandatory_keys = MANDATORY_CONFIG_KEYS[command] || []
       return [] if mandatory_keys.empty?
       return mandatory_keys unless config[command] &&
                                    config[command].is_a?(Hash)
