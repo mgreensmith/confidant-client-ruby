@@ -18,7 +18,7 @@ module Confidant
 
     # Default configuration options for the Client.
     DEFAULTS = {
-      token_lifetime: 10
+      token_lifetime: 10,
       token_version: 2,
       user_type: 'service',
       region: 'us-east-1'
@@ -52,22 +52,13 @@ module Confidant
       # as those keys are defaults in GLI and guaranteed to exist in 'opts',
       # but this is necessary if we were invoked as a lib.
       config = DEFAULT_OPTS.dup.merge(opts)
+      log.debug "Local config: #{config}"
 
-      config[:config_files].each do |config_file|
-        log.debug "looking for config file: #{config_file}"
-
-        next unless File.exist?(File.expand_path(config_file))
-        log.debug "found config file: #{config_file}"
-
-        profile_config = config_from_file(
-          File.expand_path(config_file),
-          config[:profile]
-        )
-
-        # Merge the CLI options config over the file profile config
-        config = profile_config.merge(config)
-        break
-      end
+      # Merge local config over the profile config from file.
+      config = profile_config(
+        config[:config_files],
+        config[:profile]
+      ).dup.merge(config)
 
       # We don't need any of the internal DEFAULT_OPTS any longer
       DEFAULT_OPTS.keys.each { |k| config.delete(k) }
@@ -77,17 +68,31 @@ module Confidant
       config = DEFAULTS.dup.merge(config)
 
       validate_config(config, command)
-      log.debug "authoritative config: #{config}"
+      log.debug "Authoritative config: #{config}"
       @config = config
       @config
     end
 
     private_class_method
 
+    # Return a hash of the config for the provided +profile+ from
+    # the first-existing file in the provided array of +config_files+.
+    def self::profile_config(config_files, profile)
+      config = nil
+      config_files.each do |config_file|
+        next unless File.exist?(File.expand_path(config_file))
+        log.debug "found config file: #{config_file}"
+        config = profile_from_file(config_file, profile)
+        break
+      end
+      log.debug "Profile config: #{config}"
+      config
+    end
+
     # Given the pathname of a YAML or JSON +config_file+ and the name
     # of a config +profile+ within that file, load the file and
     # return a +Hash+ of the contents of that profile key.
-    def self::config_from_file(config_file, profile)
+    def self::profile_from_file(config_file, profile)
       content = YAML.load_file(File.expand_path(config_file))
 
       # Fetch options from file for the specified profile
@@ -100,8 +105,6 @@ module Confidant
       # Merge the :auth_context keys into the top-level hash.
       profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
       profile_config.delete_if { |k, _| k == :auth_context }
-      log.debug "file config for profile '#{profile}': #{profile_config}"
-
       profile_config
     end
 

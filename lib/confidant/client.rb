@@ -18,24 +18,36 @@ module Confidant
     # Return a Hash of credentials from the confidant API
     # for +service+, either explicitly-provided, or from config.
     def get_service(service = nil)
-      target_service = service_name(service)
-      url = format('%s/v1/services/%s', @config[:url], target_service)
-      password = generate_token
-
-      log.debug "Requesting #{url} as user #{api_user}"
+      log.debug "Requesting #{api_service_url(service_name(service))} " \
+                "as user #{api_user}"
       response = RestClient::Request.execute(
         method: :get,
-        url: url,
+        url: api_service_url(service_name(service)),
         user: api_user,
-        password: password
+        password: generate_token,
+        headers: {
+          user_agent: RestClient::Platform.default_user_agent.prepend(
+            "confidant-client/#{Confidant::VERSION} "
+          )
+        }
       )
 
       JSON.parse(response.body)
     rescue => ex
       Confidant.log_exception(self, ex)
-      return { result: false } if @suppress_errors
-      raise unless @suppress_errors
+      @suppress_errors ? api_error_response : raise
     end
+
+    # The Python client suppresses API errors,
+    # returning { result: false } instead.
+    # Mimic this behavior based on the truthiness of +enable+.
+    # This is generally only called from Confidant::CLI
+    def suppress_errors(enable = true)
+      @suppress_errors = enable
+      true
+    end
+
+    private
 
     # Return the name of the service for which we
     # should fetch credentials from the confidant API.
@@ -48,7 +60,7 @@ module Confidant
       if @config[:get_service] && @config[:get_service][:service]
         return @config[:get_service][:service]
       end
-      raise 'Service name must be specifid, or provided in config as ' \
+      raise 'Service name must be specified, or provided in config as ' \
             '{get_service => service}' if service.nil?
     end
 
@@ -63,12 +75,33 @@ module Confidant
       )
     end
 
-    # The Python client suppresses all errors,
-    # returning { result: false } instead.
-    # Toggle this behavior if called from the CLI.
-    def suppress_errors(enable = true)
-      @suppress_errors = enable
-      true
+    # The URL to get credentials for +service+ from the Confidant server.
+    def api_service_url(service)
+      format('%s/v1/services/%s', @config[:url], service)
+    end
+
+    # The falsey response to return when
+    # @suppress_errors is true,
+    # rather than raising exceptions.
+    def api_error_response
+      { result: false }
+    end
+
+    # The content of a confidant auth token payload,
+    # to be encrypted by KMS.
+    def token_payload
+      now = Time.now.utc
+
+      start_time = (now - TOKEN_SKEW_SECONDS)
+
+      end_time = (
+        now - TOKEN_SKEW_SECONDS +
+        (@config[:token_lifetime].to_i * 60)
+      )
+
+      { not_before: start_time.strftime(TIME_FORMAT),
+        not_after: end_time.strftime(TIME_FORMAT)
+      }.to_json
     end
 
     # Return an auth token for the confidant service,
@@ -79,16 +112,9 @@ module Confidant
         raise 'This client only supports KMS v2 auth tokens.'
       end
 
-      now = Time.now.utc
-      payload = {
-        not_before: (now - TOKEN_SKEW_SECONDS).strftime(TIME_FORMAT),
-        not_after: (now - TOKEN_SKEW_SECONDS +
-          (@config[:token_lifetime].to_i * 60)).strftime(TIME_FORMAT)
-      }.to_json
-
       encrypt_params = {
         key_id: @config[:auth_key],
-        plaintext: payload,
+        plaintext: token_payload,
         encryption_context: {
           to: @config[:to],
           from: @config[:from],
@@ -98,7 +124,6 @@ module Confidant
 
       log.debug "Asking KMS to encrypt: #{encrypt_params}"
       resp = @kms.encrypt(encrypt_params)
-
       Base64.strict_encode64(resp.ciphertext_blob)
     end
   end
