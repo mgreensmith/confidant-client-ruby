@@ -97,7 +97,7 @@ module Confidant
 
     pre do |global_options, command, options, _|
       Confidant.logger.level = global_options['log-level'].to_sym
-      Confidant.logger.format_as( :timeless )
+      Confidant.logger.format_as(:timeless)
 
       opts = clean_opts(global_options)
       opts[command.name] = clean_opts(options) if options

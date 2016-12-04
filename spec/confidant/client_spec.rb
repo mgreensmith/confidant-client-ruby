@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Confidant::Client do
   before do
     $stderr = StringIO.new
-    Loggability.output_to( $stderr )
+    Loggability.output_to($stderr)
 
     config = {
       user_type: 'philosopher',
