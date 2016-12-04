@@ -26,7 +26,7 @@ Gem::Specification.new do |spec| # rubocop:disable Metrics/BlockLength
   spec.require_paths = ['lib']
 
   spec.add_dependency 'gli', '~> 2.14'
-  spec.add_dependency 'logging', '~> 2.1'
+  spec.add_dependency 'loggability', '~> 0.11'
   spec.add_dependency 'activesupport', '~> 5.0'
   spec.add_dependency 'aws-sdk-core', '~> 2.6'
   spec.add_dependency 'rest-client', '~> 2.0'

@@ -1,13 +1,12 @@
-require 'logging'
-
-include Logging.globally(:log)
+require 'loggability'
+require 'loggability/formatter/timeless'
 
 require 'confidant/version'
 
 # This is a set of client libs for Confidant
 module Confidant
-  Logging.logger.root.appenders = Logging.appenders.stderr
-  Logging.logger.root.level = :info
+  extend Loggability
+  log_as :confidant
 
   # An invalid configuration was provided
   class ConfigurationError < StandardError

@@ -2,12 +2,17 @@ require 'json'
 require 'base64'
 require 'aws-sdk-core'
 require 'rest-client'
+require 'loggability'
 
 require 'confidant/configurator'
 
 module Confidant
   # The Confidant Client implementation
   class Client
+    extend Loggability
+
+    log_to :confidant
+
     TOKEN_SKEW_SECONDS = 3 * 60
     TIME_FORMAT = '%Y%m%dT%H%M%SZ'.freeze
 

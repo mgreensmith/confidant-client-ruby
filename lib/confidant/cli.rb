@@ -1,10 +1,17 @@
 require 'yaml'
 require 'gli'
+require 'loggability'
+
+require 'confidant/configurator'
+require 'confidant/client'
 
 module Confidant
   # Creates a CLI that fronts the Confidant client
   class CLI
-    extend GLI::App
+    extend GLI::App,
+           Loggability
+
+    log_to :confidant
 
     program_desc 'Client for Confidant, an open source secret management system'
     version Confidant::VERSION
@@ -71,7 +78,7 @@ module Confidant
       c.desc 'The service to get.'
       c.flag 'service'
 
-      c.action do |_global_options, _options, _|
+      c.action do |_global_options, _options, _args|
         log.debug 'Running get_service command'
         client = Confidant::Client.new(@configurator)
         client.suppress_errors
@@ -81,7 +88,7 @@ module Confidant
 
     desc 'Show the current config'
     command :show_config do |c|
-      c.action do |_global_options, _options, _|
+      c.action do |_global_options, _options, _args|
         puts @configurator.config.to_yaml
       end
     end
@@ -89,7 +96,8 @@ module Confidant
     ### Hooks
 
     pre do |global_options, command, options, _|
-      Logging.logger.root.level = global_options['log-level'].to_sym
+      Confidant.logger.level = global_options['log-level'].to_sym
+      Confidant.logger.format_as( :timeless )
 
       opts = clean_opts(global_options)
       opts[command.name] = clean_opts(options) if options

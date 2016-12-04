@@ -1,9 +1,14 @@
 require 'yaml'
+require 'loggability'
 require 'active_support/hash_with_indifferent_access'
 
 module Confidant
   # Builds configuration for the Confidant client
   class Configurator
+    extend Loggability
+
+    log_to :confidant
+
     # Default configration options for the Confidant module
     # and this Configurator class, and not for the Client.
     # Pass these through to the CLI for use in the `pre` hook,

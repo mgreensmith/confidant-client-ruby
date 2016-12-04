@@ -2,7 +2,8 @@ require 'spec_helper'
 
 describe Confidant::Client do
   before do
-    Logging.logger.root.appenders = nil
+    $stderr = StringIO.new
+    Loggability.output_to( $stderr )
 
     config = {
       user_type: 'philosopher',
@@ -22,7 +23,9 @@ describe Confidant::Client do
     stub_const('Confidant::VERSION', '999')
   end
 
-  context '#get_service' do
+  after(:all) { $stderr = STDERR }
+
+  context '#get_service', log: :error do
     before do
       allow_any_instance_of(Confidant::Client)
         .to receive(:generate_token).and_return('tympan')
