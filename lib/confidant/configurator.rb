@@ -112,7 +112,7 @@ module Confidant
         break
       end
       log.debug "Profile config: #{config}"
-      config
+      config || {}
     end
 
     # Given the pathname of a YAML or JSON +config_file+ and the name
