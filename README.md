@@ -2,6 +2,9 @@
 
 This is a client for [Confidant](https://lyft.github.io/confidant), an open source secret management service.
 
+[![Gem](https://img.shields.io/gem/v/confidant.svg)](https://rubygems.org/gems/confidant)
+[![Travis](https://img.shields.io/mgreensmith/confidant-client-ruby.svg)](https://travis-ci.org/mgreensmith/confidant-client-ruby)
+
 ## Installation
 
     $ gem install confidant
@@ -104,7 +107,13 @@ COMMANDS
     show_config - Show the current config
 ```
 
-The CLI generally returns JSON to `STDOUT`, for drop-in compatibility with the official Python client. However, this CLI writes logs to `STDERR`, so if you intend to parse shell output, you should redirect `STDERR` elsewhere, i.e. `confidant 2>/some/log/file`
+The CLI returns JSON to `STDOUT`, for drop-in compatibility with the official Python client.
+
+Logs are written to `STDERR` by default. TO write logs to a file, redirect `STDERR` output:
+
+```
+confidant 2>/some/log/file
+```
 
 ## Library Usage
 
