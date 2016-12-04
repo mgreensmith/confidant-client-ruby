@@ -4,9 +4,7 @@ require 'active_support/hash_with_indifferent_access'
 module Confidant
   # Builds configuration for the Confidant client
   class Configurator
-    attr_accessor :config
-
-    # Default configraion options for the Confidant module
+    # Default configration options for the Confidant module
     # and this Configurator class, and not for the Client.
     # Pass these through to the CLI for use in the `pre` hook,
     # and strip them out of the final config hash used by the Client.
@@ -31,22 +29,24 @@ module Confidant
       get_service: [:service]
     }.freeze
 
-    # The loaded config hash.
-    def self::config
-      @config || {}
+    attr_reader :config
+
+    # Instantiate with a hash of configuration +opts+,and optionally
+    # the name of a +command+ that may have mandatory config options
+    # that should be validated along with the global config.
+    def initialize(opts = {}, command = nil)
+      configure(opts, command)
     end
 
     # Given a hash of configuration +opts+, and optionally the name
-    # of a +command+ that may have mandatory config options,
+    # of a +command+ that may have mandatory config options
+    # that should be validated along with the global config,
     # load configuration from files, merge config keys together,
     # and validate the presence of sufficient top-level config keys
     # and command-specific config keys to be able to use the client.
     #
-    # Stores the final merged config in Configurator.config, and
-    # returns it for convenience.
-    #
-
-    def self::configure(opts, command = nil)
+    # Saves and returns the final merged config.
+    def configure(opts, command = nil)
       # Merge 'opts' onto DEFAULT_OPTS so that we can self-configure.
       # This is a noop if we were called from CLI,
       # as those keys are defaults in GLI and guaranteed to exist in 'opts',
@@ -67,29 +67,29 @@ module Confidant
       # to backfill any keys that are needed for KMS.
       config = DEFAULTS.dup.merge(config)
 
-      validate_config(config, command)
-      log.debug "Authoritative config: #{config}"
       @config = config
+      validate_config(command)
+      log.debug "Authoritative config: #{config}"
       @config
     end
 
-    # Validate the provided +config+ for the presence of
+    # Validate the instance's @config for the presence of
     # all global mandatory config keys. If +command+ is provided,
     # validate the presence of all mandatory config keys specific
     # to that command, otherwise validate that mandatory config keys
     # exist for any command keys that exist in the top-level hash.
     # Raises +ConfigurationError+ if mandatory config options are missing.
-    def self::validate_config(config, command = nil)
-      missing_keys = MANDATORY_CONFIG_KEYS[:global] - config.keys
+    def validate_config(command = nil)
+      missing_keys = MANDATORY_CONFIG_KEYS[:global] - @config.keys
 
       commands_to_verify = if command
                              [command.to_sym]
                            else
-                             (MANDATORY_CONFIG_KEYS.keys & config.keys)
+                             (MANDATORY_CONFIG_KEYS.keys & @config.keys)
                            end
 
       commands_to_verify.each do |cmd|
-        missing = missing_keys_for_command(cmd, config)
+        missing = missing_keys_for_command(cmd)
         next if missing.empty?
         missing_keys << "#{cmd}[#{missing.join(',')}]"
       end
@@ -99,11 +99,11 @@ module Confidant
             "Missing required config keys: #{missing_keys.join(', ')}"
     end
 
-    private_class_method
+    private
 
     # Return a hash of the config for the provided +profile+ from
     # the first-existing file in the provided array of +config_files+.
-    def self::profile_config(config_files, profile)
+    def profile_config(config_files, profile)
       config = nil
       config_files.each do |config_file|
         next unless File.exist?(File.expand_path(config_file))
@@ -118,7 +118,7 @@ module Confidant
     # Given the pathname of a YAML or JSON +config_file+ and the name
     # of a config +profile+ within that file, load the file and
     # return a +Hash+ of the contents of that profile key.
-    def self::profile_from_file(config_file, profile)
+    def profile_from_file(config_file, profile)
       content = YAML.load_file(File.expand_path(config_file))
 
       # Fetch options from file for the specified profile
@@ -136,13 +136,13 @@ module Confidant
 
     # Given a +command+, return an +array+ of
     # the key names from MANDATORY_CONFIG_KEYS for that command,
-    # that are not present in the provided +config+
-    def self::missing_keys_for_command(command, config)
+    # that are not present in the current @config
+    def missing_keys_for_command(command)
       mandatory_keys = MANDATORY_CONFIG_KEYS[command] || []
       return [] if mandatory_keys.empty?
-      return mandatory_keys unless config[command] &&
-                                   config[command].is_a?(Hash)
-      mandatory_keys - config[command].keys
+      return mandatory_keys unless @config[command] &&
+                                   @config[command].is_a?(Hash)
+      mandatory_keys - @config[command].keys
     end
   end
 end

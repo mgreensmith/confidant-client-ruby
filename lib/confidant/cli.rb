@@ -73,7 +73,7 @@ module Confidant
 
       c.action do |_global_options, _options, _|
         log.debug 'Running get_service command'
-        client = Confidant::Client.new
+        client = Confidant::Client.new(@configurator)
         client.suppress_errors
         puts JSON.pretty_generate(client.get_service)
       end
@@ -82,7 +82,7 @@ module Confidant
     desc 'Show the current config'
     command :show_config do |c|
       c.action do |_global_options, _options, _|
-        puts Confidant::Configurator.config.to_yaml
+        puts @configurator.config.to_yaml
       end
     end
 
@@ -95,7 +95,7 @@ module Confidant
       opts[command.name] = clean_opts(options) if options
 
       log.debug "Parsed CLI options: #{opts}"
-      Confidant::Configurator.configure(opts, command.name)
+      @configurator = Confidant::Configurator.new(opts, command.name)
     end
 
     on_error do |ex|
@@ -108,7 +108,8 @@ module Confidant
     # Try and clean up GLI's output into something useable.
     def self::clean_opts(gli_opts)
       # GLI provides String and Symbol keys for each flag/switch.
-      # We want the String keys (because some of our flags have dashes)
+      # We want the String keys (because some of our flags have dashes,
+      # and GLI makes :"dash-keys" symbols which need extra work to clean)
       string_opts = gli_opts.select { |k, _| k.is_a?(String) }
 
       # Convert the dashes in key names to underscores and symbolize the keys.

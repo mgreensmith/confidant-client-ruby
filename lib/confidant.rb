@@ -18,9 +18,17 @@ module Confidant
 
   module_function
 
-  # Wrap Configurator.configure for convenience.
+  ### Wrap common workflow into module methods for end-user simplicity.
+
   def configure(config = {})
-    Configurator.configure(config)
+    @configurator = Configurator.new(config)
+  end
+
+  def get_service(service = nil)
+    unless @configurator
+      raise ConfigurationError, 'Not configured, run Confidant.configure'
+    end
+    Client.new(@configurator).get_service(service)
   end
 
   def log_exception(klass, ex)

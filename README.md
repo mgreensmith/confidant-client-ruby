@@ -114,6 +114,8 @@ Require the client.
 require 'confidant'
 ```
 
+### Configuration
+
 Configure the library via `Confidant.configure`.
 
 An insufficiently-specified config, or any errors during configuration, will raise `Confidant::ConfigurationError`
@@ -135,19 +137,39 @@ Confidant.configure(
 )
 ```
 
-Create a new `Confidant::Client`, and fetch credentials from the Confidant server.
+### Get Service
+
+Get credentials for a service from the Confidant server via `Confidant.get_service`
 
 JSON responses from the server are returned as Ruby `Hash`es.
 
 ```ruby
-client = Confidant::Client.new
+# If a service name was provided in config,
+# i.e. `get_service: { service: 'my-service' }`,
+# `get_service` will get that service's credentials:
+Confidant.get_service
+=> {"account"=>nil,
+ "blind_credentials"=>[],
+ "credentials"=>
+  [{"credential_pairs"=>{"my_fancy_secret"=>"I love cats!", "something_is"=>"A super secret!"},
+<SNIP>
 
-credentials = client.get_service('myservice-production')
+# Or, provide a service name via parameter:
+Confidant.get_service('my-service')
+```
 
-# If a service name was preconfigured,
-# i.e. `get_service: { service: 'myservice' }` exists in config,
-# the service name parameter can be excluded:
-credentials = client.get_service
+### Multiple Clients
+
+Use multiple client instances with different configurations simultaneously by instantiating `Confidant::Configurator` and `Confidant::Client` directly:
+
+```ruby
+default_config = Confidant::Configurator.new
+default_client = Confidant::Client.new(default_config)
+default_client.get_service('my-service')
+
+production_config = Confidant::Configurator.new(profile: 'production')
+production_client = Confidant::Client.new(production_config)
+production_client.get_service('my-service-production')
 ```
 
 ## WARNING

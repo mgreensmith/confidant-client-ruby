@@ -5,11 +5,17 @@ describe Confidant do
     expect(Confidant::VERSION).not_to be nil
   end
 
-  it 'has a configure method' do
-    expect(Confidant).to respond_to(:configure).with(0..1).arguments
+  context 'module workflow' do
+    it 'exposes #configure' do
+      expect(Confidant).to respond_to(:configure).with(0..1).arguments
+    end
+
+    it 'exposes #get_service' do
+      expect(Confidant).to respond_to(:configure).with(0..1).arguments
+    end
   end
 
-  it 'has a log_exception method' do
+  it 'has a #log_exception helper' do
     expect(Confidant).to respond_to(:log_exception).with(2).arguments
   end
 end

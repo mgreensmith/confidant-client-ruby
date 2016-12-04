@@ -4,7 +4,7 @@ describe Confidant::Client do
   before do
     Logging.logger.root.appenders = nil
 
-    base_config = {
+    config = {
       user_type: 'philosopher',
       from: 'hypatia',
       to: 'aedesia',
@@ -14,7 +14,7 @@ describe Confidant::Client do
       token_version: 2
     }
 
-    @client = Confidant::Client.new(base_config)
+    @client = Confidant::Client.new(Confidant::Configurator.new(config))
 
     allow(RestClient::Platform)
       .to receive(:default_user_agent).and_return('sextant')

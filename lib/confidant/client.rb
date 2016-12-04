@@ -3,6 +3,8 @@ require 'base64'
 require 'aws-sdk-core'
 require 'rest-client'
 
+require 'confidant/configurator'
+
 module Confidant
   # The Confidant Client implementation
   class Client
@@ -11,9 +13,10 @@ module Confidant
 
     attr_accessor :config
 
-    def initialize(config = Confidant::Configurator.config)
-      Confidant::Configurator.validate_config(config)
-      @config = config
+    # Initialize with a +configurator+, which is
+    # an instance of Confidant::Configurator
+    def initialize(configurator)
+      @config = configurator.config
       @kms = Aws::KMS::Client.new(region: config[:region])
       @suppress_errors = false
     end
@@ -65,7 +68,7 @@ module Confidant
       end
       raise ConfigurationError,
             'Service name must be specified, or provided in config as ' \
-            '{get_service => service}'
+            '{get_service: { service: \'my-service\' }'
     end
 
     # Return the name of the user that will connect to the confidant API
