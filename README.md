@@ -3,7 +3,7 @@
 This is a client for [Confidant](https://lyft.github.io/confidant), an open source secret management service.
 
 [![Gem](https://img.shields.io/gem/v/confidant.svg)](https://rubygems.org/gems/confidant)
-[![Travis](https://img.shields.io/mgreensmith/confidant-client-ruby.svg)](https://travis-ci.org/mgreensmith/confidant-client-ruby)
+[![Build Status](https://travis-ci.org/mgreensmith/confidant-client-ruby.svg?branch=master)](https://travis-ci.org/mgreensmith/confidant-client-ruby)
 
 ## Installation
 
