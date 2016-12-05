@@ -51,7 +51,7 @@ module Confidant
     # and command-specific config keys to be able to use the client.
     #
     # Saves and returns the final merged config.
-    def configure(opts, command = nil)
+    def configure(opts = {}, command = nil)
       # Merge 'opts' onto DEFAULT_OPTS so that we can self-configure.
       # This is a noop if we were called from CLI,
       # as those keys are defaults in GLI and guaranteed to exist in 'opts',
@@ -125,17 +125,20 @@ module Confidant
     # return a +Hash+ of the contents of that profile key.
     def profile_from_file(config_file, profile)
       content = YAML.load_file(File.expand_path(config_file))
+                    .deep_symbolize_keys
 
       # Fetch options from file for the specified profile
-      unless content.key?(profile)
+      unless content.key?(profile.to_sym)
         raise ConfigurationError,
               "Profile '#{profile}' not found in '#{config_file}"
       end
-      profile_config = content[profile].symbolize_keys!
+      profile_config = content[profile.to_sym]
 
       # Merge the :auth_context keys into the top-level hash.
-      profile_config.merge!(profile_config[:auth_context].symbolize_keys!)
-      profile_config.delete_if { |k, _| k == :auth_context }
+      if profile_config[:auth_context]
+        profile_config.merge!(profile_config[:auth_context])
+        profile_config.delete_if { |k, _| k == :auth_context }
+      end
       profile_config
     end
 
