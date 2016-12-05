@@ -4,6 +4,7 @@ This is a client for [Confidant](https://lyft.github.io/confidant), an open sour
 
 [![Gem](https://img.shields.io/gem/v/confidant.svg)](https://rubygems.org/gems/confidant)
 [![Build Status](https://travis-ci.org/mgreensmith/confidant-client-ruby.svg?branch=master)](https://travis-ci.org/mgreensmith/confidant-client-ruby)
+[![Coverage Status](https://coveralls.io/repos/github/mgreensmith/confidant-client-ruby/badge.svg?branch=master)](https://coveralls.io/github/mgreensmith/confidant-client-ruby?branch=master)
 
 ## Installation
 
