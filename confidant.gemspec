@@ -36,6 +36,7 @@ Gem::Specification.new do |spec| # rubocop:disable Metrics/BlockLength
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'simplecov', '~> 0.12'
   spec.add_development_dependency 'rubocop', '~> 0.46'
+  spec.add_development_dependency 'fakefs', '~> 0.10'
   spec.add_development_dependency 'pry', '~> 0.10'
   spec.add_development_dependency 'gem-release', '~> 0.7'
 end
