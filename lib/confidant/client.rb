@@ -44,7 +44,7 @@ module Confidant
       )
 
       JSON.parse(response.body)
-    rescue => ex
+    rescue StandardError => ex
       Confidant.log_exception(self, ex)
       @suppress_errors ? api_error_response : raise
     end

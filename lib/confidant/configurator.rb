@@ -14,7 +14,7 @@ module Confidant
     # Pass these through to the CLI for use in the `pre` hook,
     # and strip them out of the final config hash used by the Client.
     DEFAULT_OPTS = {
-      config_files: %w(~/.confidant /etc/confidant/config),
+      config_files: %w[~/.confidant /etc/confidant/config],
       profile: 'default',
       log_level: 'info'
     }.freeze
@@ -30,7 +30,7 @@ module Confidant
     # Keys that must exist in the final config in order for
     # the Client to be able to function.
     MANDATORY_CONFIG_KEYS = {
-      global: [:url, :auth_key, :from, :to],
+      global: %i[url auth_key from to],
       get_service: [:service]
     }.freeze
 
@@ -66,7 +66,7 @@ module Confidant
       ).dup.merge(config)
 
       # We don't need any of the internal DEFAULT_OPTS any longer
-      DEFAULT_OPTS.keys.each { |k| config.delete(k) }
+      DEFAULT_OPTS.each_key { |k| config.delete(k) }
 
       # Merge config onto local DEFAULTS
       # to backfill any keys that are needed for KMS.

@@ -35,7 +35,7 @@ describe Confidant::Configurator do
     write_file('/some', 'second', 'default' => second_config)
 
     configurator = described_class.new(
-      config_files: %w(/some/first /some/second)
+      config_files: %w[/some/first /some/second]
     )
     expect(configurator.config).to_not include(auth_key: 'sextant')
   end

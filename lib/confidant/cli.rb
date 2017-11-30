@@ -8,8 +8,8 @@ require 'confidant/client'
 module Confidant
   # Creates a CLI that fronts the Confidant client
   class CLI
-    extend GLI::App,
-           Loggability
+    extend Loggability
+    extend GLI::App
 
     log_to :confidant
 
@@ -33,7 +33,7 @@ module Confidant
       Confidant::Configurator::DEFAULT_OPTS[:log_level]
 
     desc 'URL of the confidant server.'
-    flag %w(u url)
+    flag %w[u url]
 
     desc 'The KMS auth key to use. i.e. alias/authnz-production'
     flag ['k', 'auth-key']
