@@ -110,7 +110,7 @@ COMMANDS
 
 The CLI returns JSON to `STDOUT`, for drop-in compatibility with the official Python client.
 
-Logs are written to `STDERR` by default. TO write logs to a file, redirect `STDERR` output:
+Logs are written to `STDERR` by default. To write logs to a file, redirect `STDERR` output:
 
 ```
 confidant 2>/some/log/file
@@ -131,7 +131,7 @@ Configure the library via `Confidant.configure`.
 An insufficiently-specified config, or any errors during configuration, will raise `Confidant::ConfigurationError`
 
 ```ruby
-# Configure Confidant using options from config file only:
+# Configure Confidant using options from the first default config file only:
 Confidant.configure
 
 # Or provide options as parameters, which will be merged onto
@@ -145,6 +145,9 @@ Confidant.configure(
         service: 'myservice-production'
     }
 )
+
+# Or use a config file from a non-default location:
+Confidant.configure(config_files: ['/some/config/file'])
 ```
 
 ### Get Service
@@ -173,10 +176,12 @@ Confidant.get_service('my-service')
 Use multiple client instances with different configurations simultaneously by instantiating `Confidant::Configurator` and `Confidant::Client` directly:
 
 ```ruby
+# Configurator using options from default config files only:
 default_config = Confidant::Configurator.new
 default_client = Confidant::Client.new(default_config)
 default_client.get_service('my-service')
 
+# Configurator with some options provided as parameters
 production_config = Confidant::Configurator.new(profile: 'production')
 production_client = Confidant::Client.new(production_config)
 production_client.get_service('my-service-production')
